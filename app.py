@@ -50,9 +50,13 @@ class SDKDoctorThread(QThread):
                 # Kill fastboot kẹt nếu chạy trên Linux/macOS
                 if os.name != 'nt':
                     subprocess.run(["killall", "-q", "-9", "fastboot"], timeout=2)
+                    subprocess.run(["killall", "-q", "-9", "adbd"], timeout=2)
+                    subprocess.run(["killall", "-q", "-9", "adb"], timeout=2)
                 else:
                     # Trên Windows dùng taskkill nếu cần
                     subprocess.run(["taskkill", "/F", "/IM", "fastboot.exe"], capture_output=True)
+                    subprocess.run(["taskkill", "/F", "/IM", "adbd.exe"], capture_output=True)
+                    subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], capture_output=True)
             except Exception:
                 pass
 
@@ -120,10 +124,14 @@ class SetupSDKThread(QThread):
             try:
                 # Kill fastboot kẹt nếu chạy trên Linux/macOS
                 if os.name != 'nt':
-                    subprocess.run(["killall", "-q", "-9", "fastboot", "adb"], timeout=2)
+                    subprocess.run(["killall", "-q", "-9", "fastboot"], timeout=2)
+                    subprocess.run(["killall", "-q", "-9", "adbd"], timeout=2)
+                    subprocess.run(["killall", "-q", "-9", "adb"], timeout=2)
                 else:
                     # Trên Windows dùng taskkill nếu cần
-                    subprocess.run(["taskkill", "/F", "/IM", "fastboot.exe", "adb.exe"], capture_output=True)
+                    subprocess.run(["taskkill", "/F", "/IM", "fastboot.exe"], capture_output=True)
+                    subprocess.run(["taskkill", "/F", "/IM", "adbd.exe"], capture_output=True)
+                    subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], capture_output=True)
             except Exception:
                 pass
 
@@ -532,15 +540,15 @@ class ADBFastbootGUI(QMainWindow):
         zip_layout.addWidget(self.ota_zip_input)
         zip_layout.addWidget(btn_browse_zip)
 
-        # btn_reboot_sideload = QPushButton("Put the device into Sideload Mode")
-        # btn_reboot_sideload.clicked.connect(lambda: self.run_adb_cmd(["reboot", "sideload"]))
+        btn_reboot_sideload = QPushButton("Put the device into Sideload Mode")
+        btn_reboot_sideload.clicked.connect(lambda: self.run_adb_cmd(["reboot", "sideload"]))
 
         btn_sideload = QPushButton("START SIDELOAD")
         btn_sideload.setStyleSheet("background-color: #8e44ad; color: white; font-weight: bold;")
         btn_sideload.clicked.connect(self.execute_sideload)
 
         sideload_layout.addRow("ZIP file:", zip_layout)
-        # sideload_layout.addRow("Preparation Step:", btn_reboot_sideload)
+        sideload_layout.addRow(btn_reboot_sideload)
         sideload_layout.addRow(btn_sideload)
 
         layout.addWidget(sideload_group)
@@ -660,10 +668,16 @@ class ADBFastbootGUI(QMainWindow):
         # Auto-kill fastboot bị dính kẹt USB Endpoint trên Linux
         if "fastboot" in command[0]:
             try:
+                # Kill fastboot kẹt nếu chạy trên Linux/macOS
                 if os.name != 'nt':
                     subprocess.run(["killall", "-q", "-9", "fastboot"], timeout=2)
+                    subprocess.run(["killall", "-q", "-9", "adbd"], timeout=2)
+                    subprocess.run(["killall", "-q", "-9", "adb"], timeout=2)
                 else:
+                    # Trên Windows dùng taskkill nếu cần
                     subprocess.run(["taskkill", "/F", "/IM", "fastboot.exe"], capture_output=True)
+                    subprocess.run(["taskkill", "/F", "/IM", "adbd.exe"], capture_output=True)
+                    subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], capture_output=True)
             except Exception:
                 pass
 
@@ -742,6 +756,8 @@ if __name__ == "__main__":
         # Kill fastboot kẹt nếu chạy trên Linux/macOS
         if os.name != 'nt':
             subprocess.run(["killall", "-q", "-9", "fastboot"], timeout=2)
+            subprocess.run(["killall", "-q", "-9", "adbd"], timeout=2)
+            subprocess.run(["killall", "-q", "-9", "adb"], timeout=2)
         else:
             # Trên Windows dùng taskkill nếu cần
             subprocess.run(["taskkill", "/F", "/IM", "fastboot.exe"], capture_output=True)
