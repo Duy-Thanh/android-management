@@ -1,0 +1,94 @@
+name: Build & Package Cross-Platform Executables
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            artifact_name: AndroidDeviceManager-Windows-x64
+            executable_path: dist/AndroidDeviceManager.exe
+            zip_name: AndroidDeviceManager-Windows-x64.zip
+            sdk_url: https://dl.google.com/android/repository/platform-tools-latest-windows.zip
+          - os: ubuntu-latest
+            platform: linux
+            artifact_name: AndroidDeviceManager-Linux-x86_64
+            executable_path: dist/AndroidDeviceManager
+            zip_name: AndroidDeviceManager-Linux-x86_64.zip
+            sdk_url: https://dl.google.com/android/repository/platform-tools-latest-linux.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install System Dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxcb-cursor0 libegl1-mesa libgl1-mesa-glx zip
+
+    - name: Download Platform-Tools from Google
+      shell: bash
+      run: |
+        echo "Downloading Platform-Tools for ${{ matrix.platform }}..."
+        mkdir -p bin
+        curl -L -o platform-tools.zip ${{ matrix.sdk_url }}
+
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          powershell -Command "Expand-Archive -Path platform-tools.zip -DestinationPath bin -Force"
+        else
+          unzip -q platform-tools.zip -d bin/
+          chmod +x bin/platform-tools/adb bin/platform-tools/fastboot bin/platform-tools/mke2fs
+        fi
+
+        rm platform-tools.zip
+
+    - name: Install Python Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyqt6 pyinstaller
+
+    - name: Build Executable with PyInstaller
+      run: |
+        python -m PyInstaller --clean app.spec
+
+    - name: Bundle Executable & Platform-Tools into ZIP
+      shell: bash
+      run: |
+        mkdir -p release_stage/bin
+
+        # Copy binary thực thi
+        cp ${{ matrix.executable_path }} release_stage/
+
+        # Copy folder platform-tools vào bundle
+        cp -r bin/platform-tools release_stage/bin/
+
+        # Đóng gói ZIP
+        cd release_stage
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          powershell -Command "Compress-Archive -Path * -DestinationPath ../${{ matrix.zip_name }}"
+        else
+          zip -r ../${{ matrix.zip_name }} .
+        fi
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: ${{ matrix.zip_name }}
