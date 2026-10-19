@@ -745,6 +745,8 @@ if __name__ == "__main__":
         else:
             # Trên Windows dùng taskkill nếu cần
             subprocess.run(["taskkill", "/F", "/IM", "fastboot.exe"], capture_output=True)
+            subprocess.run(["taskkill", "/F", "/IM", "adbd.exe"], capture_output=True)
+            subprocess.run(["taskkill", "/F", "/IM", "adb.exe"], capture_output=True)
     except Exception:
         pass
 
