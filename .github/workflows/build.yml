@@ -20,15 +20,13 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            artifact_name: AndroidDeviceManager-Windows-x64
+            artifact_name: release_stage_windows
             executable_path: dist/AndroidDeviceManager.exe
-            zip_name: AndroidDeviceManager-Windows-x64.zip
             sdk_url: https://dl.google.com/android/repository/platform-tools-latest-windows.zip
           - os: ubuntu-latest
             platform: linux
-            artifact_name: AndroidDeviceManager-Linux-x86_64
+            artifact_name: release_stage_linux
             executable_path: dist/AndroidDeviceManager
-            zip_name: AndroidDeviceManager-Linux-x86_64.zip
             sdk_url: https://dl.google.com/android/repository/platform-tools-latest-linux.zip
 
     runs-on: ${{ matrix.os }}
@@ -73,7 +71,7 @@ jobs:
       run: |
         python -m PyInstaller --clean app.spec
 
-    - name: Bundle Executable & Platform-Tools into ZIP
+    - name: Stage Release Files
       shell: bash
       run: |
         mkdir -p release_stage/bin
@@ -84,19 +82,12 @@ jobs:
         # Copy folder platform-tools vào bundle
         cp -r bin/platform-tools release_stage/bin/
 
-        # Đóng gói ZIP
-        cd release_stage
-        if [ "${{ matrix.platform }}" = "windows" ]; then
-          powershell -Command "Compress-Archive -Path * -DestinationPath ../${{ matrix.zip_name }}"
-        else
-          zip -r ../${{ matrix.zip_name }} .
-        fi
-
-    - name: Upload Artifact
+    # Upload folder release_stage thô (chưa zip), GitHub Artifacts sẽ tự handle
+    - name: Upload Uncompressed Artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact_name }}
-        path: ${{ matrix.zip_name }}
+        path: release_stage/
 
   release:
     needs: build
@@ -104,24 +95,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Download Windows Artifact
+    - name: Download Windows Folder
       uses: actions/download-artifact@v4
       with:
-        name: AndroidDeviceManager-Windows-x64
-        path: release_files/
+        name: release_stage_windows
+        path: release_stage_windows/
 
-    - name: Download Linux Artifact
+    - name: Download Linux Folder
       uses: actions/download-artifact@v4
       with:
-        name: AndroidDeviceManager-Linux-x86_64
-        path: release_files/
+        name: release_stage_linux
+        path: release_stage_linux/
+
+    - name: Compress Release ZIPs
+      run: |
+        mkdir -p final_releases
+
+        # Zip Windows release
+        cd release_stage_windows && zip -r ../final_releases/AndroidDeviceManager-Windows-x64.zip . && cd ..
+
+        # Zip Linux release
+        cd release_stage_linux && zip -r ../final_releases/AndroidDeviceManager-Linux-x86_64.zip . && cd ..
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          release_files/AndroidDeviceManager-Windows-x64.zip
-          release_files/AndroidDeviceManager-Linux-x86_64.zip
+          final_releases/AndroidDeviceManager-Windows-x64.zip
+          final_releases/AndroidDeviceManager-Linux-x86_64.zip
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
